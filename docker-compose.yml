@@ -1,0 +1,50 @@
+# ──────────────────────────────────────────────────────────────────────────
+# SafeAI — local development stack.
+#
+# Brings up the backend API and a PostgreSQL database with one command:
+#     docker compose up --build
+#
+# Configuration comes from a local `.env` file (copy from `.env.example`).
+# This is a *development* topology (one API + one DB) — see
+# docs/technology-decisions.md for why Compose, not Kubernetes, at this stage.
+# ──────────────────────────────────────────────────────────────────────────
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: safeai-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-safeai}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-safeai}
+      POSTGRES_DB: ${POSTGRES_DB:-safeai}
+    ports:
+      - "5432:5432"
+    volumes:
+      - safeai_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # API waits for the DB to be ready before starting.
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-safeai} -d ${POSTGRES_DB:-safeai}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: safeai-api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SAFEAI_ENVIRONMENT: ${SAFEAI_ENVIRONMENT:-development}
+      SAFEAI_LOG_LEVEL: ${SAFEAI_LOG_LEVEL:-INFO}
+      SAFEAI_JWT_SECRET_KEY: ${SAFEAI_JWT_SECRET_KEY:-dev-only-secret-change-me-please-32b}
+      # Compose service name `db` resolves on the internal network.
+      SAFEAI_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-safeai}:${POSTGRES_PASSWORD:-safeai}@db:5432/${POSTGRES_DB:-safeai}
+      SAFEAI_CORS_ORIGINS: ${SAFEAI_CORS_ORIGINS:-http://localhost:3000}
+    ports:
+      - "8000:8000"
+
+volumes:
+  safeai_pgdata:

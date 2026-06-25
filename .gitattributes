@@ -1,0 +1,36 @@
+# Normalize line endings: the repo is authored on Windows but runs in Linux
+# containers and CI. Force LF in the repo so Docker/bash scripts behave.
+* text=auto eol=lf
+
+# Windows-only scripts keep CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Explicit text types
+*.py    text eol=lf
+*.ts    text eol=lf
+*.tsx   text eol=lf
+*.js    text eol=lf
+*.json  text eol=lf
+*.md    text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.toml  text eol=lf
+*.cfg   text eol=lf
+*.ini   text eol=lf
+*.sh    text eol=lf
+Dockerfile text eol=lf
+
+# Binary assets (never normalize / diff)
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.pkl   binary
+*.joblib binary
+*.bin   binary
+
+# Collapse generated lockfiles in diffs/reviews
+package-lock.json -diff linguist-generated

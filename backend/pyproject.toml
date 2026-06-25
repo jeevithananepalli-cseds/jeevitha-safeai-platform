@@ -1,0 +1,125 @@
+[project]
+name = "safeai-backend"
+version = "0.1.0"
+description = "SafeAI — Intelligent Women's Safety & Emergency Response Platform (backend)"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+
+# Runtime dependencies. Pinned with lower bounds; CI/Docker resolve concrete
+# versions. Rationale for each lives in docs/technology-decisions.md.
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.5",
+    "sqlalchemy>=2.0.36",
+    "psycopg[binary]>=3.2",
+    "alembic>=1.14",
+    "bcrypt>=4.2",
+    "pyjwt>=2.10",
+    "python-multipart>=0.0.12",
+]
+
+[project.optional-dependencies]
+# Installed in dev/CI only.
+dev = [
+    "pytest>=8.3",
+    "pytest-cov>=6.0",
+    "httpx>=0.28",
+    "ruff>=0.8",
+    "mypy>=1.13",
+]
+# Phase 5 ML stack (declared now, used later).
+ml = [
+    "scikit-learn>=1.5",
+    "pandas>=2.2",
+    "numpy>=2.1",
+    "joblib>=1.4",
+]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+# ──────────────────────────────────────────────────────────────────────────
+# Ruff — linting + formatting
+# ──────────────────────────────────────────────────────────────────────────
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["app", "tests"]
+
+[tool.ruff.lint]
+# A pragmatic, strict-but-sane rule set.
+select = [
+    "E", "W",   # pycodestyle
+    "F",        # pyflakes
+    "I",        # isort (import order)
+    "B",        # flake8-bugbear
+    "C4",       # comprehensions
+    "UP",       # pyupgrade
+    "N",        # pep8-naming
+    "SIM",      # flake8-simplify
+    "RUF",      # ruff-specific
+]
+ignore = [
+    "B008",  # function call in default arg — required by FastAPI's Depends() pattern
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]            # asserts are expected in tests
+"alembic/*" = ["E501", "N999"]  # generated migration style
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+# ──────────────────────────────────────────────────────────────────────────
+# mypy — static typing
+# ──────────────────────────────────────────────────────────────────────────
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+plugins = ["pydantic.mypy"]
+exclude = ["alembic/"]
+
+[[tool.mypy.overrides]]
+# Third-party packages without bundled type stubs.
+module = ["bcrypt.*"]
+ignore_missing_imports = true
+
+# ──────────────────────────────────────────────────────────────────────────
+# pytest + coverage
+# ──────────────────────────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-ra --strict-markers"
+testpaths = ["tests"]
+pythonpath = ["."]
+# Treat warnings as errors so the suite stays clean. The single ignore is an
+# external deprecation emitted by Starlette's own TestClient (httpx → httpx2
+# migration notice); it is not actionable in our code.
+filterwarnings = [
+    "error",
+    "ignore:Using `httpx` with `starlette.testclient` is deprecated",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["app"]
+omit = ["app/main.py", "alembic/*", "tests/*"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]

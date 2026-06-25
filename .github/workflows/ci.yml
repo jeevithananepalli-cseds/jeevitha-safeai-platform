@@ -1,0 +1,115 @@
+name: CI
+
+# Quality gate: every push and PR must pass lint, types, tests, and builds.
+# Mirrors the local commands documented in the backend/frontend READMEs, so
+# "green locally" means "green in CI".
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+# Cancel superseded runs on the same ref to save CI minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Backend: lint, type-check, tests (against a real PostgreSQL) ──────────
+  backend:
+    name: Backend (lint · types · tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: safeai
+          POSTGRES_PASSWORD: safeai
+          POSTGRES_DB: safeai_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U safeai -d safeai_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      SAFEAI_ENVIRONMENT: development
+      SAFEAI_JWT_SECRET_KEY: ci-test-secret-key-at-least-32-bytes-long
+      SAFEAI_DATABASE_URL: postgresql+psycopg://safeai:safeai@localhost:5432/safeai_test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Lint (ruff)
+        run: ruff check .
+
+      - name: Format check (ruff)
+        run: ruff format --check .
+
+      - name: Type check (mypy)
+        run: mypy app
+
+      - name: Tests + coverage (pytest)
+        run: pytest --cov --cov-report=term-missing --cov-fail-under=80
+
+  # ── Frontend: lint, type-check, build ────────────────────────────────────
+  frontend:
+    name: Frontend (lint · types · build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint (eslint)
+        run: npm run lint
+
+      - name: Type check (tsc)
+        run: npm run typecheck
+
+      - name: Build (next build)
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_BASE_URL: http://localhost:8000/api/v1
+
+  # ── Docker: ensure the backend image builds ──────────────────────────────
+  docker:
+    name: Docker build (backend image)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: false
+          tags: safeai-backend:ci

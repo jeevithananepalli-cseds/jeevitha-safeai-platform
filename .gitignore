@@ -1,0 +1,77 @@
+# ──────────────────────────────────────────────────────────────
+# Secrets & environment
+# ──────────────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ──────────────────────────────────────────────────────────────
+# Python
+# ──────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.tox/
+*.egg-info/
+dist/
+build/
+.python-version
+
+# Local SQLite databases (dev/test convenience stores)
+*.db
+*.sqlite3
+
+# ML artifacts (large / regenerated)
+*.pkl
+*.joblib
+backend/app/infrastructure/ml/artifacts/*.bin
+
+# ──────────────────────────────────────────────────────────────
+# Node / Next.js
+# ──────────────────────────────────────────────────────────────
+node_modules/
+.next/
+out/
+.turbo/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ──────────────────────────────────────────────────────────────
+# Editors / OS
+# ──────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# ──────────────────────────────────────────────────────────────
+# Claude Code / agent tooling (never commit)
+# ──────────────────────────────────────────────────────────────
+.claude/
+CLAUDE.local.md
+
+# ──────────────────────────────────────────────────────────────
+# Docker / logs
+# ──────────────────────────────────────────────────────────────
+*.log
+docker-compose.override.yml
