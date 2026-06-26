@@ -29,7 +29,8 @@ def test_cors_origins_are_parsed_into_a_list() -> None:
 
 def test_production_requires_a_real_jwt_secret() -> None:
     # The placeholder secret must be rejected at runtime validation in prod.
-    insecure = Settings(environment="production")
+    placeholder_secret = Settings.model_fields["jwt_secret_key"].default
+    insecure = Settings(environment="production", jwt_secret_key=placeholder_secret)
     with pytest.raises(RuntimeError, match="JWT_SECRET_KEY"):
         insecure.validate_runtime()
 
