@@ -14,13 +14,11 @@ Two distinct probes (see docs/architecture.md §9):
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Response, status
 
-from app.api.deps import get_app_settings, get_database
+from app.api.deps import DatabaseDep, SettingsDep
 from app.api.v1.schemas.common import ApiResponse
 from app.api.v1.schemas.health import LivenessStatus, ReadinessStatus
-from app.core.config import Settings
-from app.infrastructure.db.session import Database
 
 router = APIRouter(tags=["health"])
 
@@ -30,9 +28,7 @@ router = APIRouter(tags=["health"])
     response_model=ApiResponse[LivenessStatus],
     summary="Liveness probe (no dependencies)",
 )
-def liveness(
-    settings: Settings = Depends(get_app_settings),
-) -> ApiResponse[LivenessStatus]:
+def liveness(settings: SettingsDep) -> ApiResponse[LivenessStatus]:
     """Report that the process is alive. Always ``200`` while serving."""
     return ApiResponse.ok(LivenessStatus(status="alive", version=settings.version))
 
@@ -50,8 +46,8 @@ def liveness(
 )
 def readiness(
     response: Response,
-    settings: Settings = Depends(get_app_settings),
-    database: Database = Depends(get_database),
+    settings: SettingsDep,
+    database: DatabaseDep,
 ) -> ApiResponse[ReadinessStatus]:
     """Report readiness, including database connectivity.
 
