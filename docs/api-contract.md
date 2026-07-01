@@ -20,18 +20,22 @@ All responses use a consistent envelope:
 
 ```jsonc
 // success
-{ "success": true,  "data": { /* payload */ }, "error": null }
+{ "success": true,  "data": { /* payload */ }, "error": null, "meta": null }
 
 // error
-{ "success": false, "data": null, "error": { "code": "string", "message": "human readable", "details": { } } }
+{ "success": false, "data": null, "error": { "code": "string", "message": "human readable", "details": { } }, "meta": null }
 ```
 
-Paginated list responses include `meta`:
+`meta` is always present and is `null` except on paginated list responses, where
+it carries pagination info:
 
 ```jsonc
 { "success": true, "data": [ /* items */ ], "error": null,
   "meta": { "total": 123, "page": 1, "limit": 20 } }
 ```
+
+List endpoints accept `?page=<n>&limit=<m>` (`page` ≥ 1, `1` ≤ `limit` ≤ `100`,
+defaults `page=1`, `limit=20`); out-of-range values return `422`.
 
 ### Status codes
 

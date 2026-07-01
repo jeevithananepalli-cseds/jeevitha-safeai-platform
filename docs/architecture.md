@@ -7,6 +7,12 @@ core workflows, the security posture, and how the system is intended to scale.
 Every decision below is justified — the goal is a design that a reviewer can
 read and understand *why*, not just *what*.
 
+> **Scope note:** this is the **target architecture**. It describes the full
+> system design, including workflows (SOS, notifications, AI risk) that are
+> planned for later phases. For what is implemented today, see
+> [development-roadmap.md](development-roadmap.md) — currently the engineering
+> foundation (Phase 1) and authentication (Phase 2).
+
 ---
 
 ## 1. System Overview

@@ -9,7 +9,7 @@ built on solid, tested ground — the way a production system grows.
 
 ---
 
-## Phase 1 — Engineering Foundation 🟡
+## Phase 1 — Engineering Foundation ✅
 
 **Goal:** a runnable, tested, containerized skeleton with the architecture in
 place — before any feature logic.
@@ -39,7 +39,7 @@ place — before any feature logic.
 
 ---
 
-## Phase 2 — Authentication & User Management ⬜
+## Phase 2 — Authentication & User Management ✅
 
 **Goal:** real users can register, log in, and read their profile.
 
