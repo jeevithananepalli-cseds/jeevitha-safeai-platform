@@ -20,8 +20,22 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.v1.schemas.common import ApiResponse
 from app.core.logging import get_logger
+from app.domain.exceptions import (
+    DomainError,
+    EmailAlreadyExistsError,
+    InvalidCredentialsError,
+    UserNotFoundError,
+)
 
 logger = get_logger(__name__)
+
+# Map each domain error to (HTTP status, stable code, safe client message).
+_DOMAIN_ERROR_RESPONSES: dict[type[DomainError], tuple[int, str, str]] = {
+    EmailAlreadyExistsError: (409, "email_taken", "An account with this email already exists."),
+    InvalidCredentialsError: (401, "invalid_credentials", "Invalid email or password."),
+    UserNotFoundError: (404, "not_found", "The requested resource was not found."),
+}
+_DEFAULT_DOMAIN_RESPONSE = (400, "domain_error", "The request could not be processed.")
 
 # Map HTTP status codes to stable, machine-readable error codes (api-contract.md).
 _STATUS_TO_CODE: dict[int, str] = {
@@ -85,8 +99,22 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
     return JSONResponse(status_code=500, content=payload.model_dump())
 
 
+async def domain_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Translate a domain error into its envelope + HTTP status.
+
+    Domain errors are expected business outcomes (e.g. a taken email), so they
+    are not logged as failures — the mapping yields a safe client message.
+    """
+    if not isinstance(exc, DomainError):  # pragma: no cover - defensive
+        raise exc
+    status_code, code, message = _DOMAIN_ERROR_RESPONSES.get(type(exc), _DEFAULT_DOMAIN_RESPONSE)
+    payload: ApiResponse[None] = ApiResponse.fail(code, message)
+    return JSONResponse(status_code=status_code, content=payload.model_dump())
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     """Register all envelope-enforcing handlers on the application."""
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
     app.add_exception_handler(StarletteHTTPException, http_exception_handler)
+    app.add_exception_handler(DomainError, domain_exception_handler)
     app.add_exception_handler(Exception, unhandled_exception_handler)
