@@ -90,3 +90,10 @@ def test_openapi_schema_is_served(client: TestClient) -> None:
     response = client.get("/openapi.json")
     assert response.status_code == 200
     assert response.json()["info"]["title"]
+
+
+def test_every_response_carries_process_time_header(client: TestClient) -> None:
+    # The timing middleware annotates all responses (observability groundwork).
+    response = client.get("/api/v1/health/live")
+    assert "X-Process-Time-Ms" in response.headers
+    assert float(response.headers["X-Process-Time-Ms"]) >= 0.0

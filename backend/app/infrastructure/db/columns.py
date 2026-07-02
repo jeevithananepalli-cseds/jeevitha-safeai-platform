@@ -36,7 +36,7 @@ def user_id_fk() -> Mapped[int]:
     default for personal data.
     """
     return mapped_column(
-        BigInteger().with_variant(Integer, "sqlite"),
+        BigIntPrimaryKey,
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,

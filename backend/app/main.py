@@ -10,11 +10,13 @@ The module also exposes ``app`` for ASGI servers (``uvicorn app.main:app``).
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+import time
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 
 from app.api.errors import register_exception_handlers
 from app.api.v1.router import api_router
@@ -25,6 +27,9 @@ from app.infrastructure.db.session import Database
 logger = get_logger(__name__)
 
 API_V1_PREFIX = "/api/v1"
+
+# Requests slower than this are logged as warnings (observability groundwork).
+SLOW_REQUEST_THRESHOLD_MS = 500.0
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -79,6 +84,33 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    # Compress larger JSON responses (paginated lists compress well); small
+    # payloads are passed through untouched.
+    app.add_middleware(GZipMiddleware, minimum_size=1024)
+
+    @app.middleware("http")
+    async def request_timing(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        """Attach per-request latency and surface slow requests.
+
+        Every response carries ``X-Process-Time-Ms``; requests slower than
+        ``SLOW_REQUEST_THRESHOLD_MS`` are logged as warnings so latency
+        regressions are visible before users report them.
+        """
+        start = time.perf_counter()
+        response = await call_next(request)
+        elapsed_ms = (time.perf_counter() - start) * 1000
+        response.headers["X-Process-Time-Ms"] = f"{elapsed_ms:.1f}"
+        if elapsed_ms > SLOW_REQUEST_THRESHOLD_MS:
+            logger.warning(
+                "Slow request: %s %s -> %s (%.1f ms)",
+                request.method,
+                request.url.path,
+                response.status_code,
+                elapsed_ms,
+            )
+        return response
 
     register_exception_handlers(app)
     app.include_router(api_router, prefix=API_V1_PREFIX)
