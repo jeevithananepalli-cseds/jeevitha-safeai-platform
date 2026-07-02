@@ -7,6 +7,7 @@ settings and an isolated, schema-created SQLite database per test.
 
 from __future__ import annotations
 
+import os
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -25,11 +26,20 @@ from app.main import create_app
 
 @pytest.fixture
 def test_settings(tmp_path: Path) -> Settings:
-    """Settings for one test: an isolated SQLite file and a fixed JWT secret."""
-    db_path = tmp_path / "safeai_test.db"
+    """Settings for one test.
+
+    Uses an isolated SQLite file by default (zero-dependency local runs). When
+    ``SAFEAI_TEST_DATABASE_URL`` is set (CI points it at PostgreSQL), the suite
+    runs against that instead — real-dialect fidelity, with the schema recreated
+    per test by the ``app`` fixture.
+    """
+    db_url = (
+        os.environ.get("SAFEAI_TEST_DATABASE_URL")
+        or f"sqlite:///{(tmp_path / 'safeai_test.db').as_posix()}"
+    )
     return Settings(
         environment="development",
-        database_url=f"sqlite:///{db_path.as_posix()}",
+        database_url=db_url,
         jwt_secret_key="test-secret-key-at-least-32-bytes-long!",
         access_token_expire_minutes=60,
         log_level="WARNING",

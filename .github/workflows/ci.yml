@@ -42,6 +42,9 @@ jobs:
       SAFEAI_ENVIRONMENT: development
       SAFEAI_JWT_SECRET_KEY: ci-test-secret-key-at-least-32-bytes-long
       SAFEAI_DATABASE_URL: postgresql+psycopg://safeai:safeai@localhost:5432/safeai_test
+      # Run the integration/API tests against the real PostgreSQL service, not
+      # SQLite — real-dialect fidelity (FKs, types, constraints).
+      SAFEAI_TEST_DATABASE_URL: postgresql+psycopg://safeai:safeai@localhost:5432/safeai_test
 
     steps:
       - uses: actions/checkout@v4
@@ -65,8 +68,13 @@ jobs:
       - name: Type check (mypy)
         run: mypy app
 
-      - name: Tests + coverage (pytest)
-        run: pytest --cov --cov-report=term-missing --cov-fail-under=80
+      - name: Validate migrations (upgrade + downgrade on PostgreSQL)
+        run: |
+          alembic upgrade head
+          alembic downgrade base
+
+      - name: Tests + coverage (pytest, PostgreSQL)
+        run: pytest --cov --cov-report=term-missing --cov-fail-under=85
 
   # ── Frontend: lint, type-check, build ────────────────────────────────────
   frontend:
