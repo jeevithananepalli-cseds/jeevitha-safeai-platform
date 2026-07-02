@@ -22,3 +22,8 @@ class EventRepository(Protocol):
         """Return this user's event previously created with the given
         idempotency key, or ``None`` — the basis for idempotent SOS creation."""
         ...
+
+    def update_status(self, event: EmergencyEvent) -> EmergencyEvent:
+        """Persist ``event``'s status (the event must already exist) and return
+        the stored entity with a refreshed ``updated_at``."""
+        ...

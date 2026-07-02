@@ -11,6 +11,7 @@ from dataclasses import replace
 
 from app.domain.entities.emergency_contact import EmergencyContact
 from app.domain.entities.emergency_event import EmergencyEvent
+from app.domain.entities.location_sample import LocationSample
 from app.domain.entities.user import User
 
 
@@ -116,6 +117,37 @@ class InMemoryEventRepository:
             ),
             None,
         )
+
+    def update_status(self, event: EmergencyEvent) -> EmergencyEvent:
+        assert event.id is not None
+        stored = replace(event, updated_at=_utcnow())
+        self._items[event.id] = stored
+        return stored
+
+
+class InMemoryLocationRepository:
+    """A dict-backed ``LocationRepository`` for unit tests (newest first)."""
+
+    def __init__(self) -> None:
+        self._items: dict[int, LocationSample] = {}
+        self._next_id = 1
+
+    def add(self, sample: LocationSample) -> LocationSample:
+        stored = replace(sample, id=self._next_id, recorded_at=_utcnow())
+        self._items[self._next_id] = stored
+        self._next_id += 1
+        return stored
+
+    def _newest_first(self, user_id: int) -> list[LocationSample]:
+        items = [s for s in self._items.values() if s.user_id == user_id]
+        # recorded_at can collide within a test; id order mirrors insert order.
+        return sorted(items, key=lambda s: s.id or 0, reverse=True)
+
+    def list_for_user(self, user_id: int, *, limit: int, offset: int) -> list[LocationSample]:
+        return self._newest_first(user_id)[offset : offset + limit]
+
+    def count_for_user(self, user_id: int) -> int:
+        return len(self._newest_first(user_id))
 
 
 class RecordingNotifier:

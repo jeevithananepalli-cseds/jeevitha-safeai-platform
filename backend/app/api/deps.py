@@ -20,14 +20,18 @@ from app.api.pagination import Pagination, pagination_params
 from app.application.use_cases.add_contact import AddContactUseCase
 from app.application.use_cases.authenticate_user import AuthenticateUserUseCase
 from app.application.use_cases.get_event import GetEventUseCase
+from app.application.use_cases.get_location_history import GetLocationHistoryUseCase
 from app.application.use_cases.list_contacts import ListContactsUseCase
+from app.application.use_cases.record_location import RecordLocationUseCase
 from app.application.use_cases.register_user import RegisterUserUseCase
 from app.application.use_cases.trigger_sos import TriggerSosUseCase
+from app.application.use_cases.update_event_status import UpdateEventStatusUseCase
 from app.core.config import Settings
 from app.core.security import InvalidTokenError
 from app.domain.entities.user import User
 from app.domain.repositories.emergency_contact_repository import EmergencyContactRepository
 from app.domain.repositories.event_repository import EventRepository
+from app.domain.repositories.location_repository import LocationRepository
 from app.domain.repositories.user_repository import UserRepository
 from app.domain.services.notifier import Notifier
 from app.domain.services.password_hasher import PasswordHasher
@@ -35,6 +39,7 @@ from app.infrastructure.db.repositories.emergency_contact_repository import (
     SqlAlchemyEmergencyContactRepository,
 )
 from app.infrastructure.db.repositories.event_repository import SqlAlchemyEventRepository
+from app.infrastructure.db.repositories.location_repository import SqlAlchemyLocationRepository
 from app.infrastructure.db.repositories.user_repository import SqlAlchemyUserRepository
 from app.infrastructure.db.session import Database
 from app.infrastructure.notifications.log_notifier import LogNotifier
@@ -84,9 +89,9 @@ def get_user_repository(session: Session = Depends(get_session)) -> UserReposito
     return SqlAlchemyUserRepository(session)
 
 
-def get_password_hasher() -> PasswordHasher:
-    """Provide the bcrypt password hasher."""
-    return BcryptPasswordHasher()
+def get_password_hasher(settings: Settings = Depends(get_app_settings)) -> PasswordHasher:
+    """Provide the bcrypt password hasher, cost-configured from settings."""
+    return BcryptPasswordHasher(rounds=settings.bcrypt_rounds)
 
 
 def get_token_service(settings: Settings = Depends(get_app_settings)) -> JwtTokenService:
@@ -109,6 +114,11 @@ def get_event_repository(session: Session = Depends(get_session)) -> EventReposi
 def get_notifier() -> Notifier:
     """Provide the notification transport (structured log adapter in Phase 3)."""
     return LogNotifier()
+
+
+def get_location_repository(session: Session = Depends(get_session)) -> LocationRepository:
+    """Provide the SQLAlchemy-backed location history repository."""
+    return SqlAlchemyLocationRepository(session)
 
 
 # --- use-case providers -------------------------------------------------------
@@ -152,6 +162,24 @@ def get_get_event_use_case(
     events: EventRepository = Depends(get_event_repository),
 ) -> GetEventUseCase:
     return GetEventUseCase(events)
+
+
+def get_update_event_status_use_case(
+    events: EventRepository = Depends(get_event_repository),
+) -> UpdateEventStatusUseCase:
+    return UpdateEventStatusUseCase(events)
+
+
+def get_record_location_use_case(
+    locations: LocationRepository = Depends(get_location_repository),
+) -> RecordLocationUseCase:
+    return RecordLocationUseCase(locations)
+
+
+def get_location_history_use_case(
+    locations: LocationRepository = Depends(get_location_repository),
+) -> GetLocationHistoryUseCase:
+    return GetLocationHistoryUseCase(locations)
 
 
 # --- authentication -----------------------------------------------------------
@@ -216,4 +244,11 @@ AddContactUseCaseDep = Annotated[AddContactUseCase, Depends(get_add_contact_use_
 ListContactsUseCaseDep = Annotated[ListContactsUseCase, Depends(get_list_contacts_use_case)]
 TriggerSosUseCaseDep = Annotated[TriggerSosUseCase, Depends(get_trigger_sos_use_case)]
 GetEventUseCaseDep = Annotated[GetEventUseCase, Depends(get_get_event_use_case)]
+UpdateEventStatusUseCaseDep = Annotated[
+    UpdateEventStatusUseCase, Depends(get_update_event_status_use_case)
+]
+RecordLocationUseCaseDep = Annotated[RecordLocationUseCase, Depends(get_record_location_use_case)]
+GetLocationHistoryUseCaseDep = Annotated[
+    GetLocationHistoryUseCase, Depends(get_location_history_use_case)
+]
 PaginationDep = Annotated[Pagination, Depends(pagination_params)]

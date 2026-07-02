@@ -56,6 +56,20 @@ class SqlAlchemyEventRepository:
         ).one_or_none()
         return self._to_entity(model) if model is not None else None
 
+    def update_status(self, event: EmergencyEvent) -> EmergencyEvent:
+        if event.id is None:  # pragma: no cover - guarded by the use case
+            msg = "cannot update an unpersisted event"
+            raise ValueError(msg)
+        model = self._session.get(EmergencyEventModel, event.id)
+        if model is None:  # pragma: no cover - guarded by the use case
+            msg = f"event {event.id} not found"
+            raise ValueError(msg)
+        model.status = event.status.value
+        # Flush so `onupdate` refreshes updated_at and the entity we return
+        # reflects the stored row.
+        self._session.flush()
+        return self._to_entity(model)
+
     @staticmethod
     def _to_entity(model: EmergencyEventModel) -> EmergencyEvent:
         return EmergencyEvent(
