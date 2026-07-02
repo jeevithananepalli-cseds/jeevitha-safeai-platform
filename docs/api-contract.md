@@ -221,8 +221,9 @@ Fetch one emergency event. **Auth required.** Only the owner may read it.
   "error": null }
 ```
 
-**403** — the event belongs to another user.
-**404** — no such event.
+**404** — no such event **or** the event belongs to another user. The two are
+deliberately indistinguishable so event ids cannot be enumerated by a non-owner
+(a safety requirement — see [security-design.md](security-design.md)).
 
 ---
 

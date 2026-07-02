@@ -116,12 +116,16 @@ Conventions used below:
 
 **Constraints / indexes**
 
-- `INDEX(user_id, created_at DESC)` — a user's events, most-recent-first.
-- `INDEX(status)` (partial: `WHERE status = 'active'`) — quickly find open
-  emergencies (the operational hot query).
-- `UNIQUE(idempotency_key)` — enforces idempotent SOS creation.
-- `CHECK (status IN ('active','acknowledged','resolved','cancelled'))`.
-- `CHECK (latitude BETWEEN -90 AND 90 AND longitude BETWEEN -180 AND 180)`.
+- `INDEX(user_id, created_at)` — a user's events, most-recent-first (implemented
+  as `ix_events_user_created`).
+- `UNIQUE(user_id, idempotency_key)` — enforces **per-user** idempotent SOS
+  creation (composite, so two users may independently use the same client key).
+- *Planned Postgres hardening:* a partial `INDEX(status) WHERE status='active'`
+  for the "any open emergencies?" hot query, and `CHECK` constraints on `status`
+  and coordinate ranges. These are currently enforced at the application/domain
+  layer (`EventStatus` enum, the `Coordinates` value object, and DTO validation)
+  and kept out of the portable migration; they will be added as Postgres-only
+  constraints during deployment hardening (Phase 6).
 
 ### 2.4 `location_history`
 
@@ -189,6 +193,12 @@ Conventions used below:
 
 This mix is deliberate: personal data cascades away with the user (privacy),
 while de-identifiable risk signals are retained for model quality.
+
+> **Enforcement parity:** PostgreSQL enforces foreign keys by default; SQLite
+> does not unless asked. The engine enables `PRAGMA foreign_keys=ON` for SQLite
+> connections, so `ON DELETE CASCADE` and FK constraints behave identically in
+> local/test (SQLite) and production (PostgreSQL) — and the CI test suite runs
+> against PostgreSQL for full-dialect fidelity.
 
 ---
 

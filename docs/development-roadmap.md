@@ -59,7 +59,7 @@ passwords anywhere; ≥80% coverage on new code.
 
 ---
 
-## Phase 3 — Emergency Workflow ⬜
+## Phase 3 — Emergency Workflow ✅
 
 **Goal:** users can trigger an SOS that is durably recorded and notifies contacts.
 

@@ -200,7 +200,11 @@ Response: 201 Created  { event_id, status: "active", notified: N }
 
 - **Idempotency:** the client sends an `Idempotency-Key`. The use case checks
   for an existing event with that key before creating a new one — a retry
-  returns the same event. (See [glossary](glossary.md#idempotency).)
+  returns the same event. This is also **concurrency-safe**: a `UNIQUE(user_id,
+  idempotency_key)` constraint is the source of truth, and if two simultaneous
+  requests slip past the pre-check, the loser catches the conflict and returns
+  the winner's event as a replay rather than erroring. (See
+  [glossary](glossary.md#idempotency).)
 - **Write-first, notify-after:** the event is durably persisted *before* we
   attempt notification. If notification fails, the event still exists and can
   be retried; we never lose the record of a real emergency.

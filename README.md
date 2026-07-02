@@ -4,9 +4,9 @@
 
 **An AI-powered personal safety platform built with security-first engineering principles.**
 
-![Phase](https://img.shields.io/badge/phase-2%20complete-brightgreen)
-![Tests](https://img.shields.io/badge/tests-59%20passing-brightgreen)
-![Coverage](https://img.shields.io/badge/coverage-96.6%25-brightgreen)
+![Phase](https://img.shields.io/badge/phase-3%20complete-brightgreen)
+![Tests](https://img.shields.io/badge/tests-97%20passing-brightgreen)
+![Coverage](https://img.shields.io/badge/coverage-96.4%25-brightgreen)
 ![Python](https://img.shields.io/badge/python-3.12-blue)
 ![Lint](https://img.shields.io/badge/lint-ruff-black)
 ![Types](https://img.shields.io/badge/types-mypy%20strict-blue)
@@ -14,9 +14,10 @@
 
 </div>
 
-> **Status:** Phase 2 complete — authentication and reusable backend foundations
-> are implemented and tested. Emergency workflows and AI safety intelligence are
-> on the [roadmap](#roadmap). This README documents **only what is implemented**.
+> **Status:** Phase 3 complete — authentication, reusable backend foundations,
+> and the emergency workflow (SOS, contacts, events) are implemented and tested.
+> AI safety intelligence is on the [roadmap](#roadmap). This README documents
+> **only what is implemented**.
 
 ---
 
@@ -45,6 +46,22 @@ Only implemented, tested functionality is listed here.
 - **JWT authentication** — stateless, algorithm-pinned tokens with expiry.
 - **Protected API endpoints** — a bearer-token dependency resolves the current
   user; protected routes reject missing, malformed, or expired tokens with `401`.
+
+### Emergency Workflow
+
+- **SOS activation** — records a durable emergency event and notifies the user's
+  contacts. **Write-first, notify-after**: the event is persisted before any
+  notification, so a real emergency is never lost if delivery fails.
+- **Idempotent SOS** — an `Idempotency-Key` header collapses retries (or a
+  double-tap) into a single event instead of creating duplicates.
+- **Emergency event lifecycle** — a domain-enforced status machine
+  (`active → acknowledged → resolved / cancelled`); terminal states cannot reopen.
+- **Emergency contacts** — add and list trusted contacts (paginated), with a
+  per-user unique phone constraint.
+- **Per-user authorization** — a user can only read their own events; a
+  non-owned event is indistinguishable from a missing one (no id enumeration).
+- **Pluggable notifications** — delivery is behind a `Notifier` port
+  (a structured-log/audit adapter today; SMS/push later without touching use cases).
 
 ### Backend Architecture
 
@@ -217,14 +234,14 @@ cd frontend && npm run lint && npm run typecheck && npm run build
 - **Phase 2 — Authentication & reusable backend foundations:** registration, login,
   JWT-protected APIs; shared ORM columns, pagination primitives, typed dependency
   injection, and authentication test fixtures.
+- **Phase 3 — Emergency Workflow:** SOS activation (write-first, idempotent),
+  emergency contacts, the emergency event status lifecycle, per-user
+  authorization, and a pluggable notification port.
 
 ### Upcoming
 
-- **Phase 3 — Emergency Workflow:**
-  - Emergency events
-  - SOS lifecycle
-  - Emergency contacts
-  - Location workflows
+- **Phase 4 — Location Tracking:** record and retrieve location history
+  (paginated), feeding future risk assessment.
 
 ### Future
 
