@@ -47,6 +47,15 @@ def test_hash_password_rejects_overlong_input() -> None:
         hash_password("x" * 73)
 
 
+def test_hash_password_honors_configured_cost() -> None:
+    # bcrypt embeds the cost in the hash prefix ($2b$<cost>$...), so a lower
+    # configured work factor is observable — and verification still succeeds
+    # because the cost is read back from the hash itself.
+    hashed = hash_password("some-password", rounds=4)
+    assert hashed.startswith("$2b$04$")
+    assert verify_password("some-password", hashed) is True
+
+
 # --- JWT ----------------------------------------------------------------------
 
 

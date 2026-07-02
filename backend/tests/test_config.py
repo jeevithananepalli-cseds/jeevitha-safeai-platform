@@ -42,3 +42,27 @@ def test_production_requires_a_real_jwt_secret() -> None:
 def test_access_token_expiry_must_be_positive() -> None:
     with pytest.raises(ValueError, match="access_token_expire_minutes"):
         Settings(access_token_expire_minutes=0)
+
+
+def test_bcrypt_rounds_bounds_are_enforced() -> None:
+    with pytest.raises(ValueError, match="bcrypt_rounds"):
+        Settings(bcrypt_rounds=3)  # below bcrypt's practical floor
+    with pytest.raises(ValueError, match="bcrypt_rounds"):
+        Settings(bcrypt_rounds=32)  # above bcrypt's maximum
+
+
+def test_production_requires_strong_bcrypt_cost() -> None:
+    weak = Settings(
+        environment="production",
+        jwt_secret_key="a-strong-unique-secret",
+        bcrypt_rounds=4,
+    )
+    with pytest.raises(RuntimeError, match="BCRYPT_ROUNDS"):
+        weak.validate_runtime()
+
+    strong = Settings(
+        environment="production",
+        jwt_secret_key="a-strong-unique-secret",
+        bcrypt_rounds=12,
+    )
+    strong.validate_runtime()  # must not raise

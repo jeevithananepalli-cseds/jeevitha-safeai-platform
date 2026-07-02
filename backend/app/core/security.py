@@ -26,6 +26,11 @@ import jwt
 # explicit guard rather than relying on silent truncation.
 _BCRYPT_MAX_BYTES = 72
 
+# Default bcrypt work factor. 12 is the accepted production baseline (~250 ms
+# per hash); the value is configurable via Settings so tests can use a cheap
+# factor while production enforces a strong one (see Settings.validate_runtime).
+DEFAULT_BCRYPT_ROUNDS = 12
+
 
 class InvalidTokenError(Exception):
     """Raised when a JWT is missing, malformed, expired, or has a bad signature."""
@@ -39,11 +44,13 @@ class TokenData:
     expires_at: dt.datetime
 
 
-def hash_password(password: str) -> str:
+def hash_password(password: str, *, rounds: int = DEFAULT_BCRYPT_ROUNDS) -> str:
     """Hash a plaintext password with bcrypt.
 
     Args:
         password: The user's plaintext password.
+        rounds: bcrypt work factor (cost). Verification reads the cost from the
+            stored hash, so changing this never invalidates existing hashes.
 
     Returns:
         A bcrypt hash string safe to store in the database.
@@ -55,7 +62,7 @@ def hash_password(password: str) -> str:
     if len(password_bytes) > _BCRYPT_MAX_BYTES:
         msg = f"password must not exceed {_BCRYPT_MAX_BYTES} bytes"
         raise ValueError(msg)
-    return bcrypt.hashpw(password_bytes, bcrypt.gensalt()).decode("utf-8")
+    return bcrypt.hashpw(password_bytes, bcrypt.gensalt(rounds)).decode("utf-8")
 
 
 def verify_password(password: str, password_hash: str) -> bool:

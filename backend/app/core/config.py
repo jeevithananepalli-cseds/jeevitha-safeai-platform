@@ -44,10 +44,14 @@ class Settings(BaseSettings):
     environment: Environment = "development"
     log_level: str = "INFO"
 
-    # --- Security (JWT) ---
+    # --- Security (JWT / hashing) ---
     jwt_secret_key: str = Field(default=_INSECURE_SECRET_SENTINEL, min_length=1)
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = Field(default=60, gt=0)
+    # bcrypt work factor. Tests use a low cost for speed; production requires
+    # >= 12 (enforced in validate_runtime). Verification is unaffected by
+    # changes because the cost is embedded in each stored hash.
+    bcrypt_rounds: int = Field(default=12, ge=4, le=31)
 
     # --- Database ---
     # Default targets a local SQLite file so the app and its smoke tests can run
@@ -89,6 +93,12 @@ class Settings(BaseSettings):
             msg = (
                 "SAFEAI_JWT_SECRET_KEY must be set to a strong, unique value in "
                 "production; the placeholder default is not permitted."
+            )
+            raise RuntimeError(msg)
+        if self.is_production and self.bcrypt_rounds < 12:
+            msg = (
+                "SAFEAI_BCRYPT_ROUNDS must be at least 12 in production; lower "
+                "work factors are permitted only for development and tests."
             )
             raise RuntimeError(msg)
 

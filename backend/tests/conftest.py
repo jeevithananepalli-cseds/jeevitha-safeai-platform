@@ -43,6 +43,10 @@ def test_settings(tmp_path: Path) -> Settings:
         jwt_secret_key="test-secret-key-at-least-32-bytes-long!",
         access_token_expire_minutes=60,
         log_level="WARNING",
+        # Minimum bcrypt cost: hashing dominates authenticated-test time at the
+        # production factor. Verification is cost-agnostic, and production
+        # enforces >= 12 via Settings.validate_runtime.
+        bcrypt_rounds=4,
     )
 
 
