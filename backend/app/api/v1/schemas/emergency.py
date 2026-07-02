@@ -12,7 +12,7 @@ import datetime as dt
 from pydantic import BaseModel, Field
 
 from app.domain.entities.emergency_contact import EmergencyContact
-from app.domain.entities.emergency_event import EmergencyEvent
+from app.domain.entities.emergency_event import EmergencyEvent, EventStatus
 
 # E.164: a leading '+' then 7-15 digits, first digit non-zero.
 _E164_PATTERN = r"^\+[1-9]\d{6,14}$"
@@ -55,6 +55,16 @@ class SosRequest(BaseModel):
     event_type: str = Field(default="sos", min_length=1, max_length=30)
     latitude: float = _LAT
     longitude: float = _LNG
+
+
+class EventStatusUpdateRequest(BaseModel):
+    """Body of ``PATCH /emergency/{id}/status``.
+
+    The value must be a valid ``EventStatus`` (else 422); whether the
+    *transition* is allowed is a domain rule and yields 409 when violated.
+    """
+
+    status: EventStatus
 
 
 class EventResponse(BaseModel):

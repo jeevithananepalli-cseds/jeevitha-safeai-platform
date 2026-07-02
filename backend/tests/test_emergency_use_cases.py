@@ -8,9 +8,15 @@ from app.application.use_cases.add_contact import AddContactCommand, AddContactU
 from app.application.use_cases.get_event import GetEventUseCase
 from app.application.use_cases.list_contacts import ListContactsUseCase
 from app.application.use_cases.trigger_sos import TriggerSosCommand, TriggerSosUseCase
+from app.application.use_cases.update_event_status import UpdateEventStatusUseCase
 from app.domain.entities.emergency_contact import EmergencyContact
 from app.domain.entities.emergency_event import EmergencyEvent, EventStatus
-from app.domain.exceptions import DuplicateContactError, EventConflictError, EventNotFoundError
+from app.domain.exceptions import (
+    DuplicateContactError,
+    EventConflictError,
+    EventNotFoundError,
+    InvalidStatusTransitionError,
+)
 from app.domain.value_objects.coordinates import Coordinates
 from tests.fakes import (
     InMemoryEmergencyContactRepository,
@@ -185,3 +191,38 @@ def test_get_event_hides_other_users_event_as_not_found() -> None:
 def test_get_event_raises_for_unknown_id() -> None:
     with pytest.raises(EventNotFoundError):
         GetEventUseCase(InMemoryEventRepository()).execute(1, 999999)
+
+
+# --- update event status --------------------------------------------------------
+
+
+def test_update_status_transitions_owned_event() -> None:
+    events = InMemoryEventRepository()
+    saved = events.add(EmergencyEvent(user_id=1, event_type="sos", location=LOCATION))
+    assert saved.id is not None
+
+    updated = UpdateEventStatusUseCase(events).execute(1, saved.id, EventStatus.ACKNOWLEDGED)
+
+    assert updated.status is EventStatus.ACKNOWLEDGED
+    # The change is persisted, not just returned.
+    stored = events.get_by_id(saved.id)
+    assert stored is not None
+    assert stored.status is EventStatus.ACKNOWLEDGED
+
+
+def test_update_status_rejects_forbidden_transition() -> None:
+    events = InMemoryEventRepository()
+    saved = events.add(
+        EmergencyEvent(user_id=1, event_type="sos", location=LOCATION, status=EventStatus.RESOLVED)
+    )
+    assert saved.id is not None
+    with pytest.raises(InvalidStatusTransitionError):
+        UpdateEventStatusUseCase(events).execute(1, saved.id, EventStatus.ACKNOWLEDGED)
+
+
+def test_update_status_hides_other_users_event() -> None:
+    events = InMemoryEventRepository()
+    saved = events.add(EmergencyEvent(user_id=1, event_type="sos", location=LOCATION))
+    assert saved.id is not None
+    with pytest.raises(EventNotFoundError):
+        UpdateEventStatusUseCase(events).execute(2, saved.id, EventStatus.ACKNOWLEDGED)

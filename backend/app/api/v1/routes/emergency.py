@@ -4,9 +4,19 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Header, Response, status
 
-from app.api.deps import CurrentUserId, GetEventUseCaseDep, TriggerSosUseCaseDep
+from app.api.deps import (
+    CurrentUserId,
+    GetEventUseCaseDep,
+    TriggerSosUseCaseDep,
+    UpdateEventStatusUseCaseDep,
+)
 from app.api.v1.schemas.common import ApiResponse
-from app.api.v1.schemas.emergency import EventResponse, SosRequest, SosResponse
+from app.api.v1.schemas.emergency import (
+    EventResponse,
+    EventStatusUpdateRequest,
+    SosRequest,
+    SosResponse,
+)
 from app.application.use_cases.trigger_sos import TriggerSosCommand
 from app.domain.value_objects.coordinates import Coordinates
 
@@ -51,4 +61,24 @@ def get_event(
     use_case: GetEventUseCaseDep,
 ) -> ApiResponse[EventResponse]:
     event = use_case.execute(user_id, event_id)
+    return ApiResponse.ok(EventResponse.from_entity(event))
+
+
+@router.patch(
+    "/emergency/{event_id}/status",
+    response_model=ApiResponse[EventResponse],
+    summary="Transition an emergency event's status (acknowledge, resolve, cancel)",
+)
+def update_event_status(
+    event_id: int,
+    payload: EventStatusUpdateRequest,
+    user_id: CurrentUserId,
+    use_case: UpdateEventStatusUseCaseDep,
+) -> ApiResponse[EventResponse]:
+    """Advance the event through its lifecycle.
+
+    Transition rules are enforced by the domain: terminal states (resolved,
+    cancelled) cannot be reopened — violations return ``409``.
+    """
+    event = use_case.execute(user_id=user_id, event_id=event_id, new_status=payload.status)
     return ApiResponse.ok(EventResponse.from_entity(event))

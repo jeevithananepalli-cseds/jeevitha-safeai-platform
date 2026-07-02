@@ -182,6 +182,84 @@ def test_get_event_non_integer_id_returns_422(
     assert client.get("/api/v1/emergency/not-a-number", headers=auth_headers).status_code == 422
 
 
+# --- event status lifecycle -----------------------------------------------------
+
+
+def _create_event(client: TestClient, headers: dict[str, str]) -> int:
+    created = client.post(SOS_URL, json={"latitude": 1, "longitude": 2}, headers=headers)
+    event_id: int = created.json()["data"]["id"]
+    return event_id
+
+
+def test_event_full_lifecycle_active_to_resolved(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    event_id = _create_event(client, auth_headers)
+
+    ack = client.patch(
+        f"/api/v1/emergency/{event_id}/status",
+        json={"status": "acknowledged"},
+        headers=auth_headers,
+    )
+    assert ack.status_code == 200
+    assert ack.json()["data"]["status"] == "acknowledged"
+
+    resolved = client.patch(
+        f"/api/v1/emergency/{event_id}/status",
+        json={"status": "resolved"},
+        headers=auth_headers,
+    )
+    assert resolved.status_code == 200
+    assert resolved.json()["data"]["status"] == "resolved"
+
+    # The transition is durable: a fresh read sees the final state.
+    fetched = client.get(f"/api/v1/emergency/{event_id}", headers=auth_headers)
+    assert fetched.json()["data"]["status"] == "resolved"
+
+
+def test_resolved_event_cannot_be_reopened(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    event_id = _create_event(client, auth_headers)
+    client.patch(
+        f"/api/v1/emergency/{event_id}/status", json={"status": "resolved"}, headers=auth_headers
+    )
+
+    response = client.patch(
+        f"/api/v1/emergency/{event_id}/status",
+        json={"status": "acknowledged"},
+        headers=auth_headers,
+    )
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "invalid_status_transition"
+
+
+def test_update_status_rejects_unknown_status_value(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    event_id = _create_event(client, auth_headers)
+    response = client.patch(
+        f"/api/v1/emergency/{event_id}/status", json={"status": "panic"}, headers=auth_headers
+    )
+    assert response.status_code == 422
+
+
+def test_update_status_hides_other_users_event(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    event_id = _create_event(client, auth_headers)
+    other = _auth(client, "intruder@example.com")
+    response = client.patch(
+        f"/api/v1/emergency/{event_id}/status", json={"status": "cancelled"}, headers=other
+    )
+    assert response.status_code == 404
+
+
+def test_update_status_requires_auth(client: TestClient) -> None:
+    response = client.patch("/api/v1/emergency/1/status", json={"status": "resolved"})
+    assert response.status_code == 401
+
+
 def test_list_contacts_second_page(client: TestClient, auth_headers: dict[str, str]) -> None:
     for i in range(3):
         client.post(
