@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import datetime as dt
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.domain.entities.user import User
 
@@ -19,12 +19,27 @@ _PASSWORD_MIN = 8
 _PASSWORD_MAX = 72
 
 
+def _validate_password_bytes(value: str) -> str:
+    """Reject passwords over bcrypt's 72-*byte* limit.
+
+    ``max_length`` counts characters; a multibyte password (e.g. emoji) can be
+    within the character limit yet exceed 72 bytes, which bcrypt cannot hash.
+    Validating here returns a clean 422 instead of a 500 at hashing time.
+    """
+    if len(value.encode("utf-8")) > _PASSWORD_MAX:
+        msg = f"password must not exceed {_PASSWORD_MAX} bytes"
+        raise ValueError(msg)
+    return value
+
+
 class RegisterRequest(BaseModel):
     """Body of ``POST /auth/register``."""
 
     name: str = Field(min_length=1, max_length=120)
     email: EmailStr
     password: str = Field(min_length=_PASSWORD_MIN, max_length=_PASSWORD_MAX)
+
+    _check_password_bytes = field_validator("password")(_validate_password_bytes)
 
 
 class LoginRequest(BaseModel):

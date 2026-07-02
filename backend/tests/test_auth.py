@@ -67,6 +67,14 @@ def test_register_invalid_email_returns_422(client: TestClient) -> None:
     assert "email" in response.json()["error"]["details"]
 
 
+def test_register_rejects_password_over_72_bytes(client: TestClient) -> None:
+    # 20 emoji = 20 characters (within max_length) but 80 bytes — must be a clean
+    # 422, not a 500 from bcrypt's 72-byte limit.
+    response = client.post(REGISTER_URL, json={**VALID, "password": "\U0001f600" * 20})
+    assert response.status_code == 422
+    assert "password" in response.json()["error"]["details"]
+
+
 # --- login --------------------------------------------------------------------
 
 

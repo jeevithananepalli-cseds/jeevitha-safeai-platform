@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import datetime as dt
 
-from sqlalchemy import BigInteger, DateTime, Integer, func
+from sqlalchemy import BigInteger, DateTime, ForeignKey, Integer, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 # BIGINT on PostgreSQL, INTEGER on SQLite (portable auto-increment primary key).
@@ -28,6 +28,21 @@ def pk_column() -> Mapped[int]:
     return mapped_column(BigIntPrimaryKey, primary_key=True, autoincrement=True)
 
 
+def user_id_fk() -> Mapped[int]:
+    """A required ``user_id`` foreign key to ``users.id``, indexed, cascading.
+
+    The column type matches the users primary key. ``ON DELETE CASCADE`` removes
+    a user's owned rows (contacts, events, ...) with the user — the privacy
+    default for personal data.
+    """
+    return mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+
 def created_at_column() -> Mapped[dt.datetime]:
     """A ``created_at`` timestamp, set at insert time (UTC), never null.
 
@@ -39,5 +54,21 @@ def created_at_column() -> Mapped[dt.datetime]:
         DateTime(timezone=True),
         nullable=False,
         default=utcnow,
+        server_default=func.now(),
+    )
+
+
+def updated_at_column() -> Mapped[dt.datetime]:
+    """An ``updated_at`` timestamp, refreshed on every update (UTC), never null.
+
+    For tables whose rows mutate in place (e.g. an emergency event's status
+    lifecycle). ``onupdate`` refreshes it on ORM updates so the value always
+    reflects the last change.
+    """
+    return mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utcnow,
+        onupdate=utcnow,
         server_default=func.now(),
     )

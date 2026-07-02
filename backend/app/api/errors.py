@@ -22,8 +22,12 @@ from app.api.v1.schemas.common import ApiResponse
 from app.core.logging import get_logger
 from app.domain.exceptions import (
     DomainError,
+    DuplicateContactError,
     EmailAlreadyExistsError,
+    EventConflictError,
+    EventNotFoundError,
     InvalidCredentialsError,
+    InvalidStatusTransitionError,
     UserNotFoundError,
 )
 
@@ -34,6 +38,14 @@ _DOMAIN_ERROR_RESPONSES: dict[type[DomainError], tuple[int, str, str]] = {
     EmailAlreadyExistsError: (409, "email_taken", "An account with this email already exists."),
     InvalidCredentialsError: (401, "invalid_credentials", "Invalid email or password."),
     UserNotFoundError: (404, "not_found", "The requested resource was not found."),
+    DuplicateContactError: (409, "duplicate_contact", "This contact already exists."),
+    EventNotFoundError: (404, "not_found", "The requested event was not found."),
+    InvalidStatusTransitionError: (
+        409,
+        "invalid_status_transition",
+        "That status change is not allowed.",
+    ),
+    EventConflictError: (409, "conflict", "A conflicting event already exists."),
 }
 _DEFAULT_DOMAIN_RESPONSE = (400, "domain_error", "The request could not be processed.")
 

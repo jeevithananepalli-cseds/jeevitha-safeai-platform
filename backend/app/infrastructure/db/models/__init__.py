@@ -8,6 +8,8 @@ Tables are introduced per the development roadmap (users in Phase 2, emergency
 tables in Phase 3, and so on).
 """
 
+from app.infrastructure.db.models.emergency_contact import EmergencyContactModel
+from app.infrastructure.db.models.emergency_event import EmergencyEventModel
 from app.infrastructure.db.models.user import UserModel
 
-__all__ = ["UserModel"]
+__all__ = ["EmergencyContactModel", "EmergencyEventModel", "UserModel"]
