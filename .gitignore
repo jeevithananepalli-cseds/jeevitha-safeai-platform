@@ -65,9 +65,10 @@ yarn-error.log*
 Thumbs.db
 
 # ──────────────────────────────────────────────────────────────
-# Claude Code / agent tooling (never commit)
+# Agent tooling (never commit)
 # ──────────────────────────────────────────────────────────────
-.claude/
+# Note: .claude/ is intentionally NOT ignored — it stays untracked unless
+# explicitly added.
 CLAUDE.local.md
 
 # ──────────────────────────────────────────────────────────────
