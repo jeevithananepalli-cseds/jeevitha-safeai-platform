@@ -225,6 +225,38 @@ Fetch one emergency event. **Auth required.** Only the owner may read it.
 deliberately indistinguishable so event ids cannot be enumerated by a non-owner
 (a safety requirement — see [security-design.md](security-design.md)).
 
+### `PATCH /api/v1/emergency/{id}/status`
+
+Advance an emergency event through its lifecycle
+(`active → acknowledged → resolved / cancelled`). **Auth required.** Owner only.
+
+**Request**
+```json
+{ "status": "acknowledged" }
+```
+
+`status` must be one of `acknowledged`, `resolved`, `cancelled` (transitioning
+*to* `active` is never permitted).
+
+**200**
+```json
+{ "success": true,
+  "data": { "id": 42, "event_type": "sos", "status": "acknowledged",
+            "latitude": 17.385044, "longitude": 78.486671,
+            "created_at": "2026-06-25T10:05:00Z" },
+  "error": null }
+```
+
+**409** — the lifecycle forbids the transition (e.g. reopening a resolved event):
+```json
+{ "success": false, "data": null,
+  "error": { "code": "invalid_status_transition",
+             "message": "That status change is not allowed.", "details": {} } }
+```
+
+**404** — unknown or not-owned event (indistinguishable, as above).
+**422** — a value that is not a valid status.
+
 ---
 
 ## Contacts

@@ -4,9 +4,9 @@
 
 **An AI-powered personal safety platform built with security-first engineering principles.**
 
-![Phase](https://img.shields.io/badge/phase-3%20complete-brightgreen)
-![Tests](https://img.shields.io/badge/tests-97%20passing-brightgreen)
-![Coverage](https://img.shields.io/badge/coverage-96.4%25-brightgreen)
+![Phase](https://img.shields.io/badge/phase-4%20complete-brightgreen)
+![Tests](https://img.shields.io/badge/tests-139%20passing-brightgreen)
+![Coverage](https://img.shields.io/badge/coverage-96.5%25-brightgreen)
 ![Python](https://img.shields.io/badge/python-3.12-blue)
 ![Lint](https://img.shields.io/badge/lint-ruff-black)
 ![Types](https://img.shields.io/badge/types-mypy%20strict-blue)
@@ -14,10 +14,10 @@
 
 </div>
 
-> **Status:** Phase 3 complete — authentication, reusable backend foundations,
-> and the emergency workflow (SOS, contacts, events) are implemented and tested.
-> AI safety intelligence is on the [roadmap](#roadmap). This README documents
-> **only what is implemented**.
+> **Status:** Phase 4 complete — authentication, reusable backend foundations,
+> the emergency workflow (SOS, contacts, events), and location tracking are
+> implemented and tested. AI safety intelligence is on the [roadmap](#roadmap).
+> This README documents **only what is implemented**.
 
 ---
 
@@ -54,14 +54,25 @@ Only implemented, tested functionality is listed here.
   notification, so a real emergency is never lost if delivery fails.
 - **Idempotent SOS** — an `Idempotency-Key` header collapses retries (or a
   double-tap) into a single event instead of creating duplicates.
-- **Emergency event lifecycle** — a domain-enforced status machine
-  (`active → acknowledged → resolved / cancelled`); terminal states cannot reopen.
+- **Emergency event lifecycle** — a domain-enforced status machine driven via
+  `PATCH /emergency/{id}/status` (`active → acknowledged → resolved / cancelled`);
+  terminal states cannot reopen, and forbidden transitions return `409`.
 - **Emergency contacts** — add and list trusted contacts (paginated), with a
   per-user unique phone constraint.
 - **Per-user authorization** — a user can only read their own events; a
   non-owned event is indistinguishable from a missing one (no id enumeration).
 - **Pluggable notifications** — delivery is behind a `Notifier` port
   (a structured-log/audit adapter today; SMS/push later without touching use cases).
+
+### Location Tracking
+
+- **Record position** — append a validated coordinate sample to the user's
+  location history (an append-only, time-ordered track).
+- **Location history** — paginated retrieval, **newest first** with a stable
+  tiebreak, strictly isolated per user.
+- **Privacy-aware by design** — the history table is the most sensitive data in
+  the system: it cascades away with account deletion and is designed for
+  time-based partitioning with a retention window as it grows.
 
 ### Backend Architecture
 
@@ -154,6 +165,9 @@ Rationale for each choice — with alternatives and trade-offs — is in
 - **Reusable backend foundations** — shared ORM columns, pagination, typed dependency aliases.
 - **Type-safe development** — `mypy --strict` across the backend, TypeScript on the frontend.
 - **Automated testing** — unit + integration tests with an enforced coverage gate.
+- **Operational awareness** — GZip response compression, a per-request
+  `X-Process-Time-Ms` header with slow-request logging, configurable bcrypt cost
+  (production-guarded), and migrations applied automatically on container start.
 
 ## Security Design
 
@@ -237,11 +251,14 @@ cd frontend && npm run lint && npm run typecheck && npm run build
 - **Phase 3 — Emergency Workflow:** SOS activation (write-first, idempotent),
   emergency contacts, the emergency event status lifecycle, per-user
   authorization, and a pluggable notification port.
+- **Phase 4 — Location Tracking:** append-only location history with validated
+  coordinates, newest-first paginated retrieval, and per-user isolation —
+  the data foundation for risk assessment.
 
 ### Upcoming
 
-- **Phase 4 — Location Tracking:** record and retrieve location history
-  (paginated), feeding future risk assessment.
+- **Phase 5 — AI Risk Prediction:** a versioned, explainable risk model over
+  location/time features, with deterministic safety recommendations.
 
 ### Future
 

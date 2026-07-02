@@ -81,7 +81,7 @@ persists before notifying, and only the owner can read events.
 
 ---
 
-## Phase 4 — Location Tracking ⬜
+## Phase 4 — Location Tracking ✅
 
 **Goal:** record and retrieve a user's location history.
 
